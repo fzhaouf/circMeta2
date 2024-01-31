@@ -1,11 +1,22 @@
 Package: circMeta2
 Type: Package
-Title: What the Package Does (Title Case)
+Title: circMeta2: A Computational Framework For Differential Expression Analysis of Alternative Back-splicing circRNAs in Clusters
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Authors@R: 
+    person("Fengdi", "Zhao", , email = "fengdizhao@ufl.edu", role = c("aut", "cre"),
+           comment = c(ORCID = "0009-0007-8754-7955"))
+Description: Circular RNA (circRNA) is one kind of single-stranded, covalently closed noncoding RNA, which exerts important biological functions by acting as transcriptional regulators, microRNA sponges and protein templates. One important analysis of circRNAs is performing differential expression analysis of circRNAs across different biological conditions. Considering the data characteristics of circRNAs such as low read counts, the DE analysis of circRNAs imposes a unique challenge. To address the challenge, we develop a novel computational pipeline named circMeta2 to perform differential expression analysis of alternative back-splicing circRNAs in clusters to improve the statistical power by leveraging the often-overlooked additive effects of individual circRNAs in the clusters identified by the alternative back-splicing events, which may help improve the statistical power and downstream biological findings. Particularly, circMeta2 adopt two statistical approaches for DE analysis for across various experiment scales ranging from small sample size RNA-seq to population-based RNA-seq data respectively. 
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+Imports: 
+    data.table,
+    DESeq2,
+    edgeR,
+    GenomicRanges,
+    methods,
+    progress,
+    stats
+RoxygenNote: 7.2.3
+RdOpts: --no-examples
+URL: https://github.com/fzhaouf/circMeta2

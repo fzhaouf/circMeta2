@@ -1,3 +1,4 @@
+
 setClass('circObj',
          slots = c(
            samples='vector',
@@ -5,9 +6,6 @@ setClass('circObj',
            nsample.g1 = 'numeric',
            nsample.g2 = 'numeric',
            circRNA = 'list',
-           # leftFlankingIntron='list',
-           # rightFlankingIntron='list',
-           # circRNAFlankingIntron = 'list',
            circ.method='character',
            species='character',
            circRNA.all = "GRanges",
@@ -15,8 +13,8 @@ setClass('circObj',
            circRNA.DE = 'data.frame',
            A5BS.cluster = "data.frame",
            A3BS.cluster = "data.frame",
+           circCluster.DE = 'list',
            metadata = "data.frame"
-
          )
 )
 
