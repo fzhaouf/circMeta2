@@ -32,7 +32,10 @@ circNames<-function(circ.method=c('CIRCexplorer2','CIRI2')){
 #' @importFrom GenomicRanges GRanges
 #' @import methods
 #' @importFrom utils read.table
+#' @importFrom IRanges IRanges
+#' @importFrom S4Vectors Rle mcols
 makecircObj<-function(samplefiles, conditions = c(2,2), circ.method=c('CIRCexplorer2','CIRI2'),species=c('hg19','mm9'),cutoff=2){
+  require(GenomicRanges)
 
   circ.method=match.arg(circ.method)
   species=match.arg(species)
@@ -126,7 +129,7 @@ makecircObj<-function(samplefiles, conditions = c(2,2), circ.method=c('CIRCexplo
   circs.all.uniq= unique(circs.all)
 
   circid.uniq = seq(length(circs.all.uniq))
-  circid=circid.uniq[match(circs.all,circs.all.uniq)]
+  circid=circid.uniq[GenomicRanges::match(circs.all,circs.all.uniq)]
   circs.all$circid = circid
 
   circs.uniq.df = data.frame(seqnames=circs.all.uniq@seqnames,
@@ -169,7 +172,7 @@ makecircObjfromGRanges<-function(GRanges, species=c('hg19','mm9'),sparse_filter=
   circs.all.uniq= unique(circs.all)
 
   circid.uniq = seq(length(circs.all.uniq))
-  circid=circid.uniq[match(circs.all,circs.all.uniq)]
+  circid=circid.uniq[GenomicRanges::match(circs.all,circs.all.uniq)]
   circs.all$circid = circid
   circs.uniq.df = data.frame(seqnames=circs.all.uniq@seqnames,
                              start=circs.all.uniq@ranges@start,
@@ -326,7 +329,6 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
 
   if(DEmethod=='Pois'){
 
-    require(data.table)
     # # Convert circ.obj@circRNA.all to a data.table
     # tmp <- as.data.table(circObj@circRNA.all)
     # # Get unique circRNA IDs
@@ -377,17 +379,17 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
     m$genename=tmp$genename[match(circid.uni,tmp$circid)]
     m$m0 = res$m0
     m$m1 = res$m1
-    m$fc=res$fc
-    m$pval=res$pval
+    m$log2fc=log2(res$fc)
+    m$pvalue=res$pval
     m$fdr=fdr
     m$direction = "NULL"
-    m[m$fc>1,]$direction = "up"
-    m[m$fc<1,]$direction = "dw"
+    m[m$log2fc>0,]$direction = "up"
+    m[m$log2fc<0,]$direction = "dw"
 
     circObj@circRNA.DE = m
     return(circObj)
   }
-  if(DEmethod=='glm'){
+  if(DEmethod=='GLM'){
 
     tmp <- data.frame(circObj@circRNA.all)
     circid.uni <- unique(tmp$circid)
@@ -417,8 +419,8 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
       pb$tick()
     }
     res = data.frame(res)
-    colnames(res) = c("pvalue","m1","m2","log2fc")
-    res$fdr=p.adjust(res$pval,method='fdr')
+    colnames(res) = c("pvalue","m0","m1","log2fc")
+    res$fdr=p.adjust(res$pvalue,method='fdr')
     res$circid = circid.uni
     res$direction = "NULL"
     res[res$log2fc>0,]$direction = "up"
@@ -542,16 +544,16 @@ circClusterDE<-function(circObj, circ.cutoff=2, DEmethod=c('Meta', "edgeR", 'DES
       ncirc_in_junc=numeric(njunc)
       pvals_junc=numeric(njunc)
       fc = numeric(njunc)
+      m0 = numeric(njunc)
       m1 = numeric(njunc)
-      m2 = numeric(njunc)
 
       if(DEmethod=="Meta"){
         pvals.alls = circRNADE.out$pvalue
         names(pvals.alls) = circRNADE.out$circid
+        m0.all = circRNADE.out$m0
+        names(m0.all) = circRNADE.out$circid
         m1.all = circRNADE.out$m1
         names(m1.all) = circRNADE.out$circid
-        m2.all = circRNADE.out$m2
-        names(m2.all) = circRNADE.out$circid
 
         # method combined pvalue from single circRNA
         pb <- progress_bar$new(
@@ -561,10 +563,10 @@ circClusterDE<-function(circObj, circ.cutoff=2, DEmethod=c('Meta', "edgeR", 'DES
         for(ijunc in 1:njunc){
           tmpcircid=unique(clus.dat$circid[clus.dat$juncid==juncid[ijunc]])
           ncirc_in_junc[ijunc]=length(tmpcircid)
-          fc[ijunc] = sum(m2.all[match(tmpcircid,names(m2.all))])/
-            sum(m1.all[match(tmpcircid,names(m1.all))])
+          fc[ijunc] = sum(m1.all[match(tmpcircid,names(m1.all))])/
+            sum(m0.all[match(tmpcircid,names(m0.all))])
+          m0[ijunc] = sum(m0.all[match(tmpcircid,names(m0.all))])
           m1[ijunc] = sum(m1.all[match(tmpcircid,names(m1.all))])
-          m2[ijunc] = sum(m2.all[match(tmpcircid,names(m2.all))])
 
           # determine cluster regulate direction
           if(fc[ijunc] > 1){
@@ -610,11 +612,11 @@ circClusterDE<-function(circObj, circ.cutoff=2, DEmethod=c('Meta', "edgeR", 'DES
             weighted.sum.z = sum(weighted.z.scores)/sqrt(sum(comp.weight^2))
             adjusted.pval = 2*pnorm(-abs(weighted.sum.z))
             pvals_junc[ijunc]= adjusted.pval
-
-            pb$tick()
           }
+
+          pb$tick()
         }
-        juncDE = data.frame(juncid = juncid, numcircs =ncirc_in_junc, m1=m1, m2=m2, pvalue = pvals_junc, fc=fc)
+        juncDE = data.frame(juncid = juncid, numcircs =ncirc_in_junc, m0=m0, m1=m1, pvalue = pvals_junc, fc=fc)
         juncDE$fdr = p.adjust(juncDE$pvalue,method='fdr')
         juncDE = juncDE[juncDE$numcircs>=circ.cutoff,]
 
@@ -744,5 +746,35 @@ circClusterDE<-function(circObj, circ.cutoff=2, DEmethod=c('Meta', "edgeR", 'DES
 }
 
 
-
+theme_Publication <- function(base_size=14, base_family="Arial") {
+  library(grid)
+  library(ggthemes)
+  (theme_foundation(base_size=base_size, base_family=base_family)
+    + theme(plot.title = element_text(face = "bold",
+                                      size = rel(1), hjust = 0.5),
+            text = element_text(),
+            panel.background = element_rect(colour = NA),
+            panel.spacing = grid::unit(1.5, "lines"),
+            plot.background = element_rect(colour = NA),
+            panel.border = element_rect(colour = NA),
+            axis.title = element_text(face = "bold",size = rel(1)),
+            axis.title.y = element_text(angle=90,vjust =2),
+            axis.title.x = element_text(vjust = -0.2),
+            axis.text = element_text(size = rel(1)),
+            axis.line = element_line(colour="black"),
+            axis.ticks = element_line(),
+            panel.grid.major = element_line(colour="white"),
+            panel.grid.minor = element_blank(),
+            legend.key = element_rect(colour = NA),
+            legend.position = "bottom",
+            legend.direction = "horizontal",
+            legend.key.size= unit(0.4, "cm"),
+            legend.spacing = unit(0, "cm"),
+            legend.title = element_blank(),
+            legend.text = element_text(size = rel(1)),
+            plot.margin = unit(c(0.1,0.2,0.1,0.2),units="cm"),
+            strip.background=element_rect(colour="#CCCCCC",fill="#CCCCCC"),
+            strip.text = element_text(face="bold",size = rel(1))
+    ))
+}
 

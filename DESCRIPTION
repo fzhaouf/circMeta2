@@ -20,3 +20,5 @@ Imports:
 RoxygenNote: 7.2.3
 RdOpts: --no-examples
 URL: https://github.com/fzhaouf/circMeta2
+Depends: 
+    R (>= 2.10)
