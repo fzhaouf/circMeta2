@@ -38,14 +38,14 @@ called using ’CIRCexplorer2 and output files are stored in data folder.
 library(circMeta2)
 # read circexplorer2 or ciri2 output files using file path, specify number of sample for each 
 # condition using conditions parameter and the default is 2 samples for each condition.
-circexplorers=c(
-  '~/Library/CloudStorage/OneDrive-UniversityofFlorida/circRNA_project/Rpackage/circRNA/cerebellum/CIRCexplorer/SRR3192427.txt',
-  '~/Library/CloudStorage/OneDrive-UniversityofFlorida/circRNA_project/Rpackage/circRNA/cerebellum/CIRCexplorer/SRR3192428.txt',
-  '~/Library/CloudStorage/OneDrive-UniversityofFlorida/circRNA_project/Rpackage/circRNA/frontalcortex/CIRCexplorer/SRR3192424.txt',
-  '~/Library/CloudStorage/OneDrive-UniversityofFlorida/circRNA_project/Rpackage/circRNA/frontalcortex/CIRCexplorer/SRR3192425.txt'
+circexplorers <- c(
+  'path/to/cerebellum/SRR3192427.txt',
+  'path/to/cerebellum/SRR3192428.txt',
+  'path/to/frontalcortex/SRR3192424.txt',
+  'path/to/frontalcortex/SRR3192425.txt'
 )
 
-circ.obj = makecircObj(samplefiles = circexplorers, conditions = c(2,2), circ.method=c('CIRCexplorer2'),species='hg19')
+circ.obj = makecircObj(samplefiles = circexplorers, conditions = c(2,2), circ.method=c('CIRCexplorer2'))
 #> Loading required package: GenomicRanges
 #> Loading required package: stats4
 #> Loading required package: BiocGenerics
@@ -135,7 +135,7 @@ data("metainfo", package = "circMeta2")
 
 # read circexplorer2 or ciri2 output files using file path, specify number of sample for each 
 # condition using conditions parameter and the default is 2 samples for each condtion.
-circ.obj = makecircObjfromGRanges(GRanges = BM10.circs,species='hg19',metadata=metainfo)
+circ.obj = makecircObjfromGRanges(GRanges = BM10.circs,metadata=metainfo)
 
 #  clustering A5BS and A3BS circ-clusters
 circ.obj = getCircCluster(circObj = circ.obj)

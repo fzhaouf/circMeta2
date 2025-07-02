@@ -24,7 +24,6 @@ circNames<-function(circ.method=c('CIRCexplorer2','CIRI2')){
 #' @param samplefiles files path
 #' @param conditions specify number of samples for each condition
 #' @param circ.method specify method used for calling circRNA
-#' @param species specify hg19-human and mm9-mouse
 #' @param cutoff  minimal reads for circRNA, default is 2
 #'
 #' @return circObj S4 object
@@ -34,16 +33,14 @@ circNames<-function(circ.method=c('CIRCexplorer2','CIRI2')){
 #' @importFrom utils read.table
 #' @importFrom IRanges IRanges
 #' @importFrom S4Vectors Rle mcols
-makecircObj<-function(samplefiles, conditions = c(2,2), circ.method=c('CIRCexplorer2','CIRI2'),species=c('hg19','mm9'),cutoff=2){
+makecircObj<-function(samplefiles, conditions = c(2,2), circ.method=c('CIRCexplorer2','CIRI2'),cutoff=2){
   require(GenomicRanges)
 
   circ.method=match.arg(circ.method)
-  species=match.arg(species)
 
   circObj=new(
     Class = "circObj",
-    circ.method = circ.method,
-    species=species
+    circ.method = circ.method
   )
 
   nsample=length(samplefiles)
@@ -148,7 +145,6 @@ makecircObj<-function(samplefiles, conditions = c(2,2), circ.method=c('CIRCexplo
 #' create S4 circObj object directly from circRNA GRanges
 #'
 #' @param GRanges circRNA in GRanges format
-#' @param species pecify hg19-human and mm9-mouse
 #' @param sparse_filter sparsity filtering of circRNA, based on proportion sample has the circRNA and the mean expression of circRNA.
 #' @param metadata metadata information regarding the samples, covariates such as age, gender...
 #'
@@ -156,11 +152,10 @@ makecircObj<-function(samplefiles, conditions = c(2,2), circ.method=c('CIRCexplo
 #' @export
 #' @import methods
 #' @importFrom stats median
-makecircObjfromGRanges<-function(GRanges, species=c('hg19','mm9'),sparse_filter=0.05,metadata=NULL){
+makecircObjfromGRanges<-function(GRanges,sparse_filter=0.05,metadata=NULL){
 
   circObj=new(
-    Class = "circObj",
-    species=species
+    Class = "circObj"
   )
 
   circObj@samples = unique(GRanges$sampleid)
@@ -743,38 +738,5 @@ circClusterDE<-function(circObj, circ.cutoff=2, DEmethod=c('Meta', "edgeR", 'DES
     }
   }
   return(results)
-}
-
-
-theme_Publication <- function(base_size=14, base_family="Arial") {
-  library(grid)
-  library(ggthemes)
-  (theme_foundation(base_size=base_size, base_family=base_family)
-    + theme(plot.title = element_text(face = "bold",
-                                      size = rel(1), hjust = 0.5),
-            text = element_text(),
-            panel.background = element_rect(colour = NA),
-            panel.spacing = grid::unit(1.5, "lines"),
-            plot.background = element_rect(colour = NA),
-            panel.border = element_rect(colour = NA),
-            axis.title = element_text(face = "bold",size = rel(1)),
-            axis.title.y = element_text(angle=90,vjust =2),
-            axis.title.x = element_text(vjust = -0.2),
-            axis.text = element_text(size = rel(1)),
-            axis.line = element_line(colour="black"),
-            axis.ticks = element_line(),
-            panel.grid.major = element_line(colour="white"),
-            panel.grid.minor = element_blank(),
-            legend.key = element_rect(colour = NA),
-            legend.position = "bottom",
-            legend.direction = "horizontal",
-            legend.key.size= unit(0.4, "cm"),
-            legend.spacing = unit(0, "cm"),
-            legend.title = element_blank(),
-            legend.text = element_text(size = rel(1)),
-            plot.margin = unit(c(0.1,0.2,0.1,0.2),units="cm"),
-            strip.background=element_rect(colour="#CCCCCC",fill="#CCCCCC"),
-            strip.text = element_text(face="bold",size = rel(1))
-    ))
 }
 
