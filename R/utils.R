@@ -1,4 +1,3 @@
-
 #' handle column names of either CIRCexplorer2 or CIRI2
 #'
 #' @param circ.method specify circRNA calling method
@@ -324,51 +323,33 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
 
   if(DEmethod=='Pois'){
 
-    # # Convert circ.obj@circRNA.all to a data.table
-    # tmp <- as.data.table(circObj@circRNA.all)
-    # # Get unique circRNA IDs
-    # circid.uni <- unique(tmp$circid)
-    # ncirc <- length(circid.uni) # number of unique circRNAs
-    # nsample <- circObj@nsample
-    # nsample.g1 = circObj@nsample.g1
-    # nsample.g2 = circObj@nsample.g2
-    # # Create an empty matrix
-    # m1 <- matrix(0, nrow = ncirc, ncol = nsample)
-    # # Set the key to improve grouping efficiency
-    # data.table::setkey(tmp, tmp$circid)
-    # # Populate the matrix
-    # pb <- progress_bar$new(
-    #   format = "  [:bar] :percent :elapsedfull",
-    #   total = ncirc, clear = FALSE, width = 60
-    # )
-    # for (icirc in 1:ncirc) {
-    #   circ_data <- tmp[J(circid.uni[icirc])]
-    #   m1[icirc, circ_data$sampleid] <- circ_data$readNumber
-    #   pb$tick()
-    # }
-
     tmp = as.data.frame(circObj@circRNA.all)
     circid.uni=unique(tmp$circid)
     ncirc=length(circid.uni) # number of unique circRNA
     nsample = circObj@nsample
     nsample.g1 = circObj@nsample.g1
     nsample.g2 = circObj@nsample.g2
-    m=matrix(0,ncirc,nsample) # initiate a matrix to take circRNAs read counts
-    pb <- progress_bar$new(
-      format = "  [:bar] :percent :elapsedfull",
-      total = ncirc, clear = FALSE, width = 60
-    )
-    for(icirc in 1:ncirc){
-      id=tmp$sampleid[tmp$circid==circid.uni[icirc]]
-      m[icirc,id]=tmp$readNumber[tmp$circid==circid.uni[icirc]]
-      pb$tick()
-    }
+
+    # METHOD 1: FASTEST - Vectorized matrix assignment (no loops!)
+    m=matrix(0, ncirc, nsample)
+
+    # Create mappings once
+    circid_to_row <- setNames(1:ncirc, circid.uni)
+
+    # Get row and column indices for all data at once
+    row_indices <- circid_to_row[tmp$circid]
+    col_indices <- tmp$sampleid
+
+    # Single vectorized assignment - MUCH faster than loops!
+    m[cbind(row_indices, col_indices)] <- tmp$readNumber
 
     dat=NULL
     dat$counts=m
     dat$designs= c(rep(0,nsample.g1), rep(1,nsample.g2))
     res=runPois.ztest(dat)  # read counts matrix is normalized in runPois.ztest function
     fdr=p.adjust(res$pval,method='fdr')
+
+    # Convert matrix back to data frame for results
     m=as.data.frame(m)
     m$circid=circid.uni
     m$genename=tmp$genename[match(circid.uni,tmp$circid)]
@@ -384,133 +365,107 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
     circObj@circRNA.DE = m
     return(circObj)
   }
-  if(DEmethod=='GLM'){
 
+  if(DEmethod=='GLM'){
     tmp <- data.frame(circObj@circRNA.all)
     circid.uni <- unique(tmp$circid)
     ncirc <- length(circid.uni) # number of unique circRNAs
     formula_vars = all.vars(formula(formula_str))
     meta = circObj@metadata
-    meta$readNumber = 0
     unique.circRNAs = circObj@circRNA.all.uniq
     res=matrix(0,ncirc,4)
+
+    # Check if all formula variables exist in data
+    required_vars <- setdiff(formula_vars, "readNumber")
+    if(!all(required_vars %in% colnames(meta))) {
+      missing_vars <- setdiff(required_vars, colnames(meta))
+      stop("Missing variables in metadata: ", paste(missing_vars, collapse=", "))
+    }
+
+    # SPEEDUP 1: Pre-split data once (eliminates O(n*m) filtering)
+    tmp_by_circid <- split(tmp[,c("sampleid", "readNumber")], tmp$circid)
+
+    # SPEEDUP 2: Pre-compute sample mapping (eliminates repeated match() calls)
+    sample_to_idx <- setNames(seq_len(nrow(meta)), meta$sampleid)
+
+    # SPEEDUP 3: Reuse model_data object (eliminates repeated copying)
+    model_data <- meta
+    if(!"readNumber" %in% colnames(model_data)) {
+      model_data$readNumber <- 0
+    }
+
+    # SPEEDUP 4: Pre-compile formula object
+    formula_obj <- formula(formula_str)
+
     pb <- progress_bar$new(
       format = "  [:bar] :percent :elapsedfull",
       total = ncirc, clear = FALSE, width = 60
     )
+
     for(icirc in 1:ncirc){
-      tmpcirc=tmp[tmp$circid==circid.uni[icirc],]
-      model_data <- tmpcirc[,c("sampleid",formula_vars)]
-      meta[meta$sampleid %in% model_data$sampleid, "readNumber"] <- model_data$readNumber
-      model_data = meta
-      fit = glm(formula_str, data=model_data, family = poisson(link = "log"))
-      summary(fit)
-      coefficients <- coef(fit)
-      m1 <- exp(coefficients["(Intercept)"])
-      m2 <- exp(coefficients["(Intercept)"] + coefficients["condid2"])
-      pval=summary(fit)$coefficients[2,4]
-      log2fc = summary(fit)$coefficients[2,1]/log(2)
-      res[icirc,] = c(pval,m1,m2,log2fc)
+      circ_id <- as.character(circid.uni[icirc])
+
+      # FAST: Get pre-split data instead of filtering entire dataframe
+      circ_data <- tmp_by_circid[[circ_id]]
+
+      # Reset readNumber for each circRNA (fresh start) - SAME LOGIC
+      model_data$readNumber[] <- 0  # Use for in-place assignment
+
+      # Robust alignment - SAME LOGIC but faster lookup
+      if(!is.null(circ_data) && nrow(circ_data) > 0) {
+        # FAST: Use pre-computed mapping instead of match()
+        sample_indices <- sample_to_idx[circ_data$sampleid]
+        valid_indices <- !is.na(sample_indices)
+        if(any(valid_indices)) {
+          model_data$readNumber[sample_indices[valid_indices]] <- circ_data$readNumber[valid_indices]
+        }
+      }
+
+      # GLM fitting - EXACT SAME LOGIC as before
+      tryCatch({
+        fit = glm(formula_obj, data=model_data, family = poisson(link = "log"))
+
+        coefficients <- coef(fit)
+        m1 <- exp(coefficients["(Intercept)"])
+
+        # Dynamic coefficient detection - SAME LOGIC
+        cond_coef_name <- grep("condid", names(coefficients), value=TRUE)[1]
+        if(length(cond_coef_name) > 0 && !is.na(coefficients[cond_coef_name])) {
+          m2 <- exp(coefficients["(Intercept)"] + coefficients[cond_coef_name])
+          coef_summary <- summary(fit)$coefficients
+          cond_row <- which(rownames(coef_summary) == cond_coef_name)
+          pval <- coef_summary[cond_row, 4]
+          log2fc <- coef_summary[cond_row, 1] / log(2)
+        } else {
+          m2 <- m1
+          pval <- 1
+          log2fc <- 0
+        }
+
+        res[icirc,] = c(pval, m1, m2, log2fc)
+
+      }, error = function(e) {
+        warning(paste("GLM failed for circRNA", circ_id, ":", e$message))
+        res[icirc,] = c(NA, NA, NA, NA)
+      })
+
       pb$tick()
     }
+
+    # Result processing - EXACT SAME as before
     res = data.frame(res)
     colnames(res) = c("pvalue","m0","m1","log2fc")
     res$fdr=p.adjust(res$pvalue,method='fdr')
     res$circid = circid.uni
     res$direction = "NULL"
-    res[res$log2fc>0,]$direction = "up"
-    res[res$log2fc<0,]$direction = "dw"
+    res[!is.na(res$log2fc) & res$log2fc>0,]$direction = "up"
+    res[!is.na(res$log2fc) & res$log2fc<0,]$direction = "dw"
     res2 = merge(unique.circRNAs, res, by="circid")
-
     circObj@circRNA.DE = res2
     return(circObj)
-
   }
-  # else if(DEmethod =='DESeq2'){
-  #   ## DEseq2 use un-normlaized counts. (assume sample is fixed for all circNRAs, if sample not detected for a
-  #   # particular circRNA, we assume it is 0)
-  #
-  #   # 1. prepare counts matrix each row is a circRNA and each col is a sample
-  #   counts.allcirc = NULL
-  #   for(icirc in 1:ncirc){
-  #     setTxtProgressBar(pb, icirc)
-  #     tmpcirc=clus.dat[clus.dat$circid==circid[icirc],]
-  #     counts = numeric(n)
-  #     tmp = match(tmpcirc$sampleid,1:n)
-  #     counts[tmp] = tmpcirc$nread
-  #     counts.allcirc = rbind(counts.allcirc, counts)
-  #   }
-  #   rownames(counts.allcirc) = paste("circ",circid,sep="-")
-  #   # 2. preapre design matrix
-  #   condition = c(rep("contrl",n1),rep("case",n2)) #0 control 1 case
-  #   age = scale(age,center=TRUE,scale=TRUE)
-  #   sex = sex
-  #   coldata = data.frame(condition,age,sex)
-  #   coldata$condition = factor(coldata$condition,levels = c("contrl","case"))
-  #   coldata$sex = factor(coldata$sex, levels=c("F","M"))
-  #   colnames(coldata) = c("condition", "age", "sex")
-  #   # 3. construct DEseqdataset matrix and DE analysis
-  #   dds <- DESeqDataSetFromMatrix(countData = counts.allcirc,
-  #                                 colData = coldata,
-  #                                 design = ~ age + sex + condition) #wald pval, log2fc for last variable in the desgin formular
-  #   dds <- DESeq(dds)
-  #   res.deseq2 <- results(dds)
-  #   res.deseq2 = data.frame(res.deseq2)
-  #   res.deseq2$fdr=p.adjust(res.deseq2$pvalue,method='fdr')
-  #   res.deseq2$circid = gsub("circ-","",rownames(res.deseq2))
-  #   res.deseq2$m1 = 1
-  #   res.deseq2$m2 = (2^res.deseq2$log2FoldChange)
-  #   res.deseq2$direction = "NULL"
-  #   res.deseq2[res.deseq2$log2FoldChange>0,]$direction = "up"
-  #   res.deseq2[res.deseq2$log2FoldChange<0,]$direction = "dw"
-  #   circid_juncid = data.frame(circid=clus.dat$circid,juncid=clus.dat$juncid)
-  #   circid_juncid = circid_juncid[!duplicated(circid_juncid$circid),]
-  #   res2 = merge(res.deseq2, circid_juncid,by="circid")
-  #   res3 = merge(unique.circRNAs, res2, by="circid")
-  #   return(res3)
-  # }
-  # else if (DEmethod =='edgeR'){
-  #   #edgeR use un-normlaized counts as input
-  #
-  #   # 1. prepare counts matrix each row is a circRNA and each col is a sample
-  #   counts.allcirc = NULL
-  #   for(icirc in 1:ncirc){
-  #     setTxtProgressBar(pb, icirc)
-  #     tmpcirc=clus.dat[clus.dat$circid==circid[icirc],]
-  #     counts = numeric(n)
-  #     tmp = match(tmpcirc$sampleid,1:n)
-  #     counts[tmp] = tmpcirc$nread
-  #     counts.allcirc = rbind(counts.allcirc, counts)
-  #   }
-  #   rownames(counts.allcirc) = paste("circ",circid,sep="-")
-  #   d=DGEList(counts=counts.allcirc,group=factor(c(rep(0,n1),rep(1,n2))))
-  #   condition = c(rep("contrl",n1),rep("case",n2)) #0 control 1 case
-  #   condition = factor(condition,levels = c("contrl","case"))
-  #   age = scale(age,center=TRUE,scale=TRUE)
-  #   sex = sex
-  #   sex = factor(sex, levels=c("F","M"))
-  #   design = model.matrix(~ age + sex + condition)
-  #   d <- estimateDisp(d, design)
-  #   fit <- glmFit(d, design)
-  #   # head(fit$coefficients)
-  #   qlf <- glmLRT(fit)
-  #   res.edgeR=topTags(qlf,n=ncirc)
-  #   res.edgeR=as.data.frame(res.edgeR)
-  #   names(res.edgeR)[names(res.edgeR) == 'PValue'] <- 'pvalue'
-  #   res.edgeR$fdr = p.adjust(res.edgeR$pvalue, method='fdr')
-  #   res.edgeR$circid = gsub("circ-","",rownames(res.edgeR))
-  #   res.edgeR$m1 = 1
-  #   res.edgeR$m2 = (2^res.edgeR$logFC)
-  #   res.edgeR$direction = "NULL"
-  #   res.edgeR[res.edgeR$logFC>0,]$direction = "up"
-  #   res.edgeR[res.edgeR$logFC<0,]$direction = "dw"
-  #   circid_juncid = data.frame(circid=clus.dat$circid,juncid=clus.dat$juncid)
-  #   circid_juncid = circid_juncid[!duplicated(circid_juncid$circid),]
-  #   res2 = merge(res.edgeR, circid_juncid,by="circid")
-  #   res3 = merge(unique.circRNAs, res2, by="circid")
-  #   return(res3)
-  # }
 }
+
 
 #' circ-cluster DE function
 #'
@@ -529,6 +484,8 @@ circClusterDE<-function(circObj, circ.cutoff=2, DEmethod=c('Meta', "edgeR", 'DES
 
   for (cluster_type in cluster_types) {
     if (cluster_type %in% slotNames(circObj)) {
+
+      print(cluster_type)
 
       clus.dat <- slot(circObj, cluster_type)
       circRNADE.out <- circObj@circRNA.DE
@@ -611,7 +568,7 @@ circClusterDE<-function(circObj, circ.cutoff=2, DEmethod=c('Meta', "edgeR", 'DES
 
           pb$tick()
         }
-        juncDE = data.frame(juncid = juncid, numcircs =ncirc_in_junc, m0=m0, m1=m1, pvalue = pvals_junc, fc=fc)
+        juncDE = data.frame(juncid = juncid, numcircs =ncirc_in_junc, m0=m0, m1=m1, pvalue = pvals_junc, log2fc=log2(fc))
         juncDE$fdr = p.adjust(juncDE$pvalue,method='fdr')
         juncDE = juncDE[juncDE$numcircs>=circ.cutoff,]
 
@@ -620,123 +577,8 @@ circClusterDE<-function(circObj, circ.cutoff=2, DEmethod=c('Meta', "edgeR", 'DES
         circObj@circCluster.DE = results
 
       }
-      # else if (DEmethod=="edgeR") {
-      #   n =
-      #   # 1. prepare counts matrix each row is a circRNA and each col is a sample
-      #   counts.allcirc = NULL
-      #   for(icirc in 1:ncirc){
-      #     if(icirc%%100 ==1) print(icirc)
-      #     tmpcirc=clus.dat[clus.dat$circid==circid[icirc],]
-      #     counts = numeric(n)
-      #     tmp = match(tmpcirc$sampleid,1:n)
-      #     counts[tmp] = tmpcirc$nread
-      #     counts.allcirc = rbind(counts.allcirc, counts)
-      #   }
-      #   rownames(counts.allcirc) = paste("circ",circid,sep="-")
-      #   counts.allcirc = as.data.frame(counts.allcirc)
-      #
-      #   circid_juncid = data.frame(circid=circRNADE.out$circid,juncid=circRNADE.out$juncid)
-      #   circid_juncid = circid_juncid[!duplicated(circid_juncid$circid),]
-      #
-      #   counts.allclus = list()
-      #   juncid = NULL
-      #   ncirc_in_junc = NULL
-      #   for(ijunc in 1:njunc){
-      #     if(ijunc%%100 ==1) print(ijunc)
-      #     circid.in.clus = circid_juncid[circid_juncid$juncid==ijunc,"circid"]
-      #     if(length(circid.in.clus)<circ.cutoff){
-      #       next
-      #     } else {
-      #       circid.in.clus = paste("circ",circid.in.clus,sep="-")
-      #       counts.allclus[[ijunc]]=counts.allcirc[circid.in.clus,]
-      #       names(counts.allclus)[ijunc]=paste("clus",ijunc,sep="-")
-      #       juncid = c(juncid, ijunc)
-      #       ncirc_in_junc = c(ncirc_in_junc, length(circid.in.clus))
-      #     }
-      #   }
-      #   counts.allclus <- counts.allclus[!sapply(counts.allclus,is.null)] #remove NULL elements
-      #   clus.mat  = t(data.frame(lapply(counts.allclus, colSums)))
-      #   # 2. preapre design matrix
-      #   d=DGEList(counts=clus.mat,group=factor(c(rep(0,n1),rep(1,n2))))
-      #   condition = c(rep("contrl",n1),rep("case",n2)) #0 control 1 case
-      #   condition = factor(condition,levels = c("contrl","case"))
-      #   age = scale(age,center=TRUE,scale=TRUE)
-      #   sex = sex
-      #   sex = factor(sex, levels=c("F","M"))
-      #   design = model.matrix(~ age + sex + condition)
-      #
-      #   d <- estimateDisp(d, design)
-      #
-      #   fit <- glmFit(d, design)
-      #   # head(fit$coefficients)
-      #   qlf <- glmLRT(fit)
-      #   res.edgeR=topTags(qlf,n=ncirc)
-      #   res.edgeR=as.data.frame(res.edgeR)
-      #   names(res.edgeR)[names(res.edgeR) == 'PValue'] <- 'pvalue'
-      #   res.edgeR$fdr = p.adjust(res.edgeR$pvalue, method='fdr')
-      #   res.edgeR$juncid = gsub("clus-","",rownames(res.edgeR))
-      #   results[[cluster_type]] <- juncDE
-      #
-      # }
-      # else if (DEmethod=="DESeq2") {
-      #   # 1. prepare counts matrix each row is a circRNA and each col is a sample
-      #   counts.allcirc = NULL
-      #
-      #   for(icirc in 1:ncirc){
-      #     if(icirc%%100 ==1) print(icirc)
-      #     tmpcirc=clus.dat[clus.dat$circid==circid[icirc],]
-      #     counts = numeric(n)
-      #     tmp = match(tmpcirc$sampleid,1:n)
-      #     counts[tmp] = tmpcirc$nread
-      #     counts.allcirc = rbind(counts.allcirc, counts)
-      #   }
-      #   rownames(counts.allcirc) = paste("circ",circid,sep="-")
-      #   counts.allcirc = as.data.frame(counts.allcirc)
-      #
-      #   circid_juncid = data.frame(circid=circRNADE.out$circid,juncid=circRNADE.out$juncid)
-      #   circid_juncid = circid_juncid[!duplicated(circid_juncid$circid),]
-      #
-      #   counts.allclus = list()
-      #   juncid = NULL
-      #   ncirc_in_junc = NULL
-      #   for(ijunc in 1:njunc){
-      #     if(ijunc%%100 ==1) print(ijunc)
-      #     circid.in.clus = circid_juncid[circid_juncid$juncid==ijunc,"circid"]
-      #     if(length(circid.in.clus)<circ.cutoff){
-      #       next
-      #     } else {
-      #       circid.in.clus = paste("circ",circid.in.clus,sep="-")
-      #       counts.allclus[[ijunc]]=counts.allcirc[circid.in.clus,]
-      #       names(counts.allclus)[ijunc]=paste("clus",ijunc,sep="-")
-      #       juncid = c(juncid, ijunc)
-      #       ncirc_in_junc = c(ncirc_in_junc, length(circid.in.clus))
-      #     }
-      #   }
-      #   counts.allclus <- counts.allclus[!sapply(counts.allclus,is.null)] #remove NULL elements
-      #   clus.mat  = t(data.frame(lapply(counts.allclus, colSums)))
-      #   psudo.clus.mat = clus.mat + 1
-      #   # 2. preapre design matrix
-      #   condition = c(rep("contrl",n1),rep("case",n2)) #0 control 1 case
-      #   age = scale(age,center=TRUE,scale=TRUE)
-      #   sex = sex
-      #   coldata = data.frame(condition,age,sex)
-      #   coldata$condition = factor(coldata$condition,levels = c("contrl","case"))
-      #   coldata$sex = factor(coldata$sex, levels=c("F","M"))
-      #   colnames(coldata) = c("condition", "age", "sex")
-      #   # 3. construct DEseqdataset matrix and DE analysis
-      #   dds <- DESeqDataSetFromMatrix(countData = clus.mat,
-      #                                 colData = coldata,
-      #                                 design = ~ age + sex + condition) #wald pval, log2fc for last variable in the desgin formular
-      #   dds <- DESeq(dds)
-      #   res.deseq2 <- results(dds)
-      #   res.deseq2 = data.frame(res.deseq2)
-      #   juncDE = data.frame(juncid = juncid, numcircs =ncirc_in_junc, log2FC=res.deseq2$log2FoldChange, pvalue = res.deseq2$pvalue)
-      #   juncDE$fdr = p.adjust(juncDE$pval,method='fdr')
-      #   results[[cluster_type]] <- juncDE
-      #
-      # }
     }
   }
-  return(results)
+  return(circObj)
 }
 

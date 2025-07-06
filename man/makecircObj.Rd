@@ -8,7 +8,6 @@ makecircObj(
   samplefiles,
   conditions = c(2, 2),
   circ.method = c("CIRCexplorer2", "CIRI2"),
-  species = c("hg19", "mm9"),
   cutoff = 2
 )
 }
@@ -18,8 +17,6 @@ makecircObj(
 \item{conditions}{specify number of samples for each condition}
 
 \item{circ.method}{specify method used for calling circRNA}
-
-\item{species}{specify hg19-human and mm9-mouse}
 
 \item{cutoff}{minimal reads for circRNA, default is 2}
 }

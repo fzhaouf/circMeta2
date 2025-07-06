@@ -116,3 +116,28 @@ setMethod("circRNA.all.uniq<-", "circObj", function(x, value) {
   x
 })
 
+#' Get individual circRNA differential expression results
+#'
+#' @param x circObj object
+#' @param ... Additional arguments
+#'
+#' @return data.frame with individual circRNA DE results
+#' @export
+#' @examples
+#' \dontrun{
+#' # Get all results
+#' results <- getCircRNADE(circ.obj)
+#' }
+setGeneric("getCircRNADE", function(x, ...) standardGeneric("getCircRNADE"))
+
+#' @rdname getCircRNADE
+#' @export
+setMethod('getCircRNADE', 'circObj', function(x) {
+  if(nrow(x@circRNA.DE) > 0) {
+    results <- x@circRNA.DE
+    return(results)
+  } else {
+    warning("Individual circRNA DE results not found. Run circRNADE() first.")
+    return(NULL)
+  }
+})

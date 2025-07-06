@@ -4,17 +4,10 @@
 \alias{makecircObjfromGRanges}
 \title{create S4 circObj object directly from circRNA GRanges}
 \usage{
-makecircObjfromGRanges(
-  GRanges,
-  species = c("hg19", "mm9"),
-  sparse_filter = 0.05,
-  metadata = NULL
-)
+makecircObjfromGRanges(GRanges, sparse_filter = 0.05, metadata = NULL)
 }
 \arguments{
 \item{GRanges}{circRNA in GRanges format}
-
-\item{species}{pecify hg19-human and mm9-mouse}
 
 \item{sparse_filter}{sparsity filtering of circRNA, based on proportion sample has the circRNA and the mean expression of circRNA.}
 
