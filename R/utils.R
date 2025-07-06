@@ -330,7 +330,7 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
     nsample.g1 = circObj@nsample.g1
     nsample.g2 = circObj@nsample.g2
 
-    # METHOD 1: FASTEST - Vectorized matrix assignment (no loops!)
+    # Vectorized matrix assignment
     m=matrix(0, ncirc, nsample)
 
     # Create mappings once
@@ -340,7 +340,7 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
     row_indices <- circid_to_row[tmp$circid]
     col_indices <- tmp$sampleid
 
-    # Single vectorized assignment - MUCH faster than loops!
+    # Single vectorized assignment
     m[cbind(row_indices, col_indices)] <- tmp$readNumber
 
     dat=NULL
@@ -382,19 +382,19 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
       stop("Missing variables in metadata: ", paste(missing_vars, collapse=", "))
     }
 
-    # SPEEDUP 1: Pre-split data once (eliminates O(n*m) filtering)
+    # Pre-split data once
     tmp_by_circid <- split(tmp[,c("sampleid", "readNumber")], tmp$circid)
 
-    # SPEEDUP 2: Pre-compute sample mapping (eliminates repeated match() calls)
+    # Pre-compute sample mapping
     sample_to_idx <- setNames(seq_len(nrow(meta)), meta$sampleid)
 
-    # SPEEDUP 3: Reuse model_data object (eliminates repeated copying)
+    # Reuse model_data object
     model_data <- meta
     if(!"readNumber" %in% colnames(model_data)) {
       model_data$readNumber <- 0
     }
 
-    # SPEEDUP 4: Pre-compile formula object
+    # Pre-compile formula object
     formula_obj <- formula(formula_str)
 
     pb <- progress_bar$new(
@@ -405,15 +405,15 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
     for(icirc in 1:ncirc){
       circ_id <- as.character(circid.uni[icirc])
 
-      # FAST: Get pre-split data instead of filtering entire dataframe
+      # Get pre-split data instead of filtering entire dataframe
       circ_data <- tmp_by_circid[[circ_id]]
 
-      # Reset readNumber for each circRNA (fresh start) - SAME LOGIC
+      # Reset readNumber for each circRNA (fresh start)
       model_data$readNumber[] <- 0  # Use for in-place assignment
 
-      # Robust alignment - SAME LOGIC but faster lookup
+      # Robust alignment
       if(!is.null(circ_data) && nrow(circ_data) > 0) {
-        # FAST: Use pre-computed mapping instead of match()
+        # Use pre-computed mapping instead of match()
         sample_indices <- sample_to_idx[circ_data$sampleid]
         valid_indices <- !is.na(sample_indices)
         if(any(valid_indices)) {
@@ -421,14 +421,14 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
         }
       }
 
-      # GLM fitting - EXACT SAME LOGIC as before
+      # GLM fitting
       tryCatch({
         fit = glm(formula_obj, data=model_data, family = poisson(link = "log"))
 
         coefficients <- coef(fit)
         m1 <- exp(coefficients["(Intercept)"])
 
-        # Dynamic coefficient detection - SAME LOGIC
+        # Dynamic coefficient detection
         cond_coef_name <- grep("condid", names(coefficients), value=TRUE)[1]
         if(length(cond_coef_name) > 0 && !is.na(coefficients[cond_coef_name])) {
           m2 <- exp(coefficients["(Intercept)"] + coefficients[cond_coef_name])
@@ -452,7 +452,7 @@ circRNADE<-function(circObj,DEmethod=c('Pois', 'GLM', 'edgeR', 'DESeq2'),formula
       pb$tick()
     }
 
-    # Result processing - EXACT SAME as before
+    # Result processing
     res = data.frame(res)
     colnames(res) = c("pvalue","m0","m1","log2fc")
     res$fdr=p.adjust(res$pvalue,method='fdr')
