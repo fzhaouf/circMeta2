@@ -146,7 +146,7 @@ head(A3BS_DE)
 
 # Get detailed information about specific clusters
 getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(10))
-   juncid circid  chr     start       end  width host_gene cluster_type
+#> juncid circid  chr     start       end  width host_gene cluster_type
 #>     10    129 chr1 117944807 117963271  18465    MAN1A2         A5BS
 #>     10   1879 chr1 117944807 117984947  40141    MAN1A2         A5BS
 #>     10   5042 chr1 117944807 118009049  64243    MAN1A2         A5BS
