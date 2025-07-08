@@ -6,10 +6,10 @@ devtools::document()  # Update documentation
 devtools::check()     # Run package checks
 
 circexplorers=c(
-  '/Users/fengdi/Library/CloudStorage/OneDrive-UniversityofFlorida/Collaborations/circRNA_project/Rpackage/circRNA/cerebellum/CIRCexplorer/SRR3192427.txt',
-  '/Users/fengdi/Library/CloudStorage/OneDrive-UniversityofFlorida/Collaborations/circRNA_project/Rpackage/circRNA/cerebellum/CIRCexplorer/SRR3192428.txt',
-  '/Users/fengdi/Library/CloudStorage/OneDrive-UniversityofFlorida/Collaborations/circRNA_project/Rpackage/circRNA/frontalcortex/CIRCexplorer/SRR3192424.txt',
-  '/Users/fengdi/Library/CloudStorage/OneDrive-UniversityofFlorida/Collaborations/circRNA_project/Rpackage/circRNA/frontalcortex/CIRCexplorer/SRR3192425.txt'
+  '../cerebellum/CIRCexplorer/SRR3192427.txt',
+  '../cerebellum/CIRCexplorer/SRR3192428.txt',
+  '../frontalcortex/CIRCexplorer/SRR3192424.txt',
+  '../frontalcortex/CIRCexplorer/SRR3192425.txt'
 )
 
 circ.obj <- makecircObj(
@@ -33,14 +33,9 @@ getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(6, 14, 17))
 
 
 
-
-
 devtools::load_all()  # Load the updated package
 devtools::document()  # Update documentation
 devtools::check()     # Run package checks
-
-# # change lisence
-# usethis::use_mit_license("Fengdi Zhao")
 
 
 data("demo.circs", package = "circMeta2")
@@ -62,12 +57,6 @@ head(A3BS_DE)
 # Step 2: Drill down into specific interesting clusters
 getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(6, 14, 17))
 
-#
-# # make data samller
-# load("data/BM10.circs.rda")
-# # modify as needed
-# sampleid = sample(c(1:length(BM10.circs)),100000)
-# demo.circs <- BM10.circs[sampleid]  # Example: keep first 100 rows
-#
-# usethis::use_data(demo.circs)
-#
+
+
+

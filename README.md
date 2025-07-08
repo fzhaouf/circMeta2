@@ -133,24 +133,31 @@ circ.obj = circClusterDE(circObj=circ.obj, circ.cutoff=2, DEmethod='Meta')
 # Get results with simple accessor functions
 A5BS_DE =  getClusterDE(circ.obj, cluster_type = "A5BS")
 head(A5BS_DE)
-#>    juncid  numcircs      m0         m1         fc       pvalue        fdr cluster_type
-#>      10        4 21.9836146 22.6839154 0.04524106 0.0376852537 0.10571705         A5BS
-#>      22        4  4.8949842  4.9837574 0.02592965 0.2305026946 0.37802442         A5BS
-#>      29        2  2.2383954  6.2828443 1.48895295 0.0019206582 0.01034051         A5BS
+#>   juncid numcircs         m0         m1    log2fc       pvalue          fdr cluster_type
+#>        6        4 17.4976474 27.3463730 0.6441885 6.738934e-15 3.990946e-13         A5BS
+#>       18        3  2.2010876  2.3098657 0.0695924 6.808821e-04 4.652694e-03         A5BS
+#>       20        2  0.2115516  0.3003122 0.5054539 8.421720e-02 1.839663e-01         A5BS
+#>       25        2 10.1090426 12.2737180 0.2799260 6.466705e-01 7.815769e-01         A5BS
+#>       29        2  0.0204549  0.0275081 0.4274056 2.481417e-01 3.971758e-01         A5BS
+#>       30        2  2.1412900  2.3796696 0.1522811 2.742194e-04 2.214529e-03         A5BS
+
 A3BS_DE = getClusterDE(circ.obj, cluster_type = "A3BS")
 head(A3BS_DE)
-#>    juncid numcircs      m0         m1          fc      pvalue        fdr cluster_type
-#>      4        2  4.6890278  7.5120323  0.67991444 0.003655395 0.01862696         A3BS
-#>      7        2  5.2175355  5.1091103 -0.03029641 0.005408542 0.02467326         A3BS
-#>      8        2  5.4373041  4.6473004 -0.22649862 0.009861141 0.03748799         A3BS
+#>   juncid numcircs         m0          m1    log2fc       pvalue          fdr cluster_type
+#>        6        2 31.0523771 149.1902117  2.2643773 1.033897e-13 8.322873e-12         A3BS
+#>        7        2  2.0978756   5.8212338  1.4723959 3.921400e-11 2.367545e-09         A3BS
+#>       15        2  8.4463464  18.9688404  1.1672322 3.184178e-02 1.032186e-01         A3BS
+#>       20        2 12.9693211  17.9587345  0.4695827 6.077253e-02 1.593197e-01         A3BS
+#>       26        2  0.0292181   0.0514166  0.8153695 8.990005e-03 3.911867e-02         A3BS
+#>       32        4  1.5019807   0.9237095 -0.7013552 3.481527e-08 1.050986e-06         A3BS
 
 # Get detailed information about specific clusters
 getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(10))
-#> juncid circid  chr     start       end  width host_gene cluster_type
-#>     10    129 chr1 117944807 117963271  18465    MAN1A2         A5BS
-#>     10   1879 chr1 117944807 117984947  40141    MAN1A2         A5BS
-#>     10   5042 chr1 117944807 118009049  64243    MAN1A2         A5BS
-#>     10   5774 chr1 117944807 117957453  12647    MAN1A2         A5BS
+#>   juncid circid  chr     start       end width host_gene cluster_type
+#>        6     18 chr1 117944807 117957453 12647    MAN1A2         A5BS
+#>        6   2320 chr1 117944807 117963271 18465    MAN1A2         A5BS
+#>        6   4735 chr1 117944807 117984947 40141    MAN1A2         A5BS
+#>        6   9913 chr1 117944807 117948267  3461    MAN1A2         A5BS
 ```
 
 # Understanding the Result
