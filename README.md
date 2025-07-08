@@ -136,7 +136,7 @@ head(A5BS_DE)
 #>    juncid numcircs         m0        m1        fc      pvalue       fdr cluster_type
 #>      10        4 21.9836146 22.6839154 0.04524106 0.0376852537 0.10571705         A5BS
 #>      22        4  4.8949842  4.9837574 0.02592965 0.2305026946 0.37802442         A5BS
-#>     29        2  2.2383954  6.2828443 1.48895295 0.0019206582 0.01034051         A5BS
+#>      29        2  2.2383954  6.2828443 1.48895295 0.0019206582 0.01034051         A5BS
 A3BS_DE = getClusterDE(circ.obj, cluster_type = "A3BS")
 head(A3BS_DE)
 #>    juncid numcircs         m0         m1        fc      pvalue       fdr cluster_type
