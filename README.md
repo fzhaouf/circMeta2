@@ -152,7 +152,7 @@ head(A3BS_DE)
 #>       32        4  1.5019807   0.9237095 -0.7013552 3.481527e-08 1.050986e-06         A3BS
 
 # Get detailed information about specific clusters
-getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(10))
+getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(6))
 #>   juncid circid  chr     start       end width host_gene cluster_type
 #>        6     18 chr1 117944807 117957453 12647    MAN1A2         A5BS
 #>        6   2320 chr1 117944807 117963271 18465    MAN1A2         A5BS
