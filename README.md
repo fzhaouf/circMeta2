@@ -139,14 +139,14 @@ head(A5BS_DE)
 #>      29        2  2.2383954  6.2828443 1.48895295 0.0019206582 0.01034051         A5BS
 A3BS_DE = getClusterDE(circ.obj, cluster_type = "A3BS")
 head(A3BS_DE)
-#>    juncid numcircs         m0         m1        fc      pvalue       fdr cluster_type
+#>    juncid numcircs      m0         m1          fc      pvalue        fdr cluster_type
 #>      4        2  4.6890278  7.5120323  0.67991444 0.003655395 0.01862696         A3BS
 #>      7        2  5.2175355  5.1091103 -0.03029641 0.005408542 0.02467326         A3BS
 #>      8        2  5.4373041  4.6473004 -0.22649862 0.009861141 0.03748799         A3BS
 
 # Get detailed information about specific clusters
 getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(10))
-  juncid circid  chr     start       end width host_gene cluster_type
+   juncid circid  chr     start       end  width host_gene cluster_type
 #>     10    129 chr1 117944807 117963271  18465    MAN1A2         A5BS
 #>     10   1879 chr1 117944807 117984947  40141    MAN1A2         A5BS
 #>     10   5042 chr1 117944807 118009049  64243    MAN1A2         A5BS
