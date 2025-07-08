@@ -5,7 +5,7 @@
 #'
 #' @format A GRanges object with circRNA coordinates and expression values
 #' @source Processed from brain tissue samples
-"BM10.circs"
+"demo.circs"
 
 #' Metadata for brain samples
 #'

@@ -43,10 +43,10 @@ devtools::check()     # Run package checks
 # usethis::use_mit_license("Fengdi Zhao")
 
 
-data("BM10.circs", package = "circMeta2")
+data("demo.circs", package = "circMeta2")
 data("metainfo", package = "circMeta2")
 
-circ.obj = makecircObjfromGRanges(GRanges = BM10.circs, metadata=metainfo)
+circ.obj = makecircObjfromGRanges(GRanges = demo.circs, metadata=metainfo)
 
 circ.obj = getCircCluster(circObj = circ.obj)
 
@@ -62,3 +62,12 @@ head(A3BS_DE)
 # Step 2: Drill down into specific interesting clusters
 getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(6, 14, 17))
 
+#
+# # make data samller
+# load("data/BM10.circs.rda")
+# # modify as needed
+# sampleid = sample(c(1:length(BM10.circs)),100000)
+# demo.circs <- BM10.circs[sampleid]  # Example: keep first 100 rows
+#
+# usethis::use_data(demo.circs)
+#

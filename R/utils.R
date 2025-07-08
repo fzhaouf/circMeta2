@@ -151,6 +151,7 @@ makecircObj<-function(samplefiles, conditions = c(2,2), circ.method=c('CIRCexplo
 #' @export
 #' @import methods
 #' @importFrom stats median
+#' @importFrom GenomicRanges width seqnames strand end
 makecircObjfromGRanges<-function(GRanges,sparse_filter=0.05,metadata=NULL){
 
   circObj=new(
@@ -170,8 +171,8 @@ makecircObjfromGRanges<-function(GRanges,sparse_filter=0.05,metadata=NULL){
   circs.all$circid = circid
   circs.uniq.df = data.frame(seqnames=circs.all.uniq@seqnames,
                              start=circs.all.uniq@ranges@start,
-                             end=end(circs.all.uniq),
-                             width=width(circs.all.uniq),
+                             end=GenomicRanges::end(circs.all.uniq),
+                             width=GenomicRanges::width(circs.all.uniq),
                              strand=circs.all.uniq@strand,
                              gene=circs.all.uniq$genename,
                              circid=circid.uniq)
@@ -189,11 +190,11 @@ makecircObjfromGRanges<-function(GRanges,sparse_filter=0.05,metadata=NULL){
   }
 
   # drop sparse circRNA based on preset criteria
-  # filter circRNA. proportion of sample has this circRNA and mean express level 10%
+  # filter circRNA. proportion of sample has this circRNA and mean express level 0.05
   xx.m1=rowMeans(counts!=0)
   xx.m2=rowMeans(counts)
   threshold=sparse_filter
-  id=which(xx.m2>threshold & xx.m1>threshold) #filter circRNA
+  id=which(xx.m1>threshold) #filter circRNA
 
   circs.all = circs.all[circs.all$circid %in% id]
   circs.uniq.df = circs.uniq.df[circs.uniq.df$circid %in% id, ]

@@ -111,46 +111,46 @@ AD circRNA data from GRanges with patient metadata including age and sex as cova
 ``` r
 library(circMeta2)
 
-data("BM10.circs", package = "circMeta2")
+data("demo.circs", package = "circMeta2")
 data("metainfo", package = "circMeta2")
 
 # read circexplorer2 or ciri2 output files using file path, specify number of sample for each 
 # condition using conditions parameter and the default is 2 samples for each condition.
-circ.obj = makecircObjfromGRanges(GRanges = BM10.circs, metadata=metainfo)
+circ.obj = makecircObjfromGRanges(GRanges = demo.circs, metadata=metainfo)
 
 #  clustering A5BS and A3BS circ-clusters
 circ.obj = getCircCluster(circObj = circ.obj)
 
 # call individual circRNA DE 
 circ.obj = circRNADE(circObj = circ.obj, DEmethod = 'GLM', formula_str = "readNumber ~ condid + age + sex")
-#> [==========================================] 100% 00:01:51
+#> [==========================================] 100% 00:00:41
 
 # circ-cluster DE
 circ.obj = circClusterDE(circObj=circ.obj, circ.cutoff=2, DEmethod='Meta')
-#> [==========================================] 100% 00:00:51
-#> [==========================================] 100% 00:00:48
+#> "A5BS.cluster"
+#> "A3BS.cluster"
 
 # Get results with simple accessor functions
 A5BS_DE =  getClusterDE(circ.obj, cluster_type = "A5BS")
 head(A5BS_DE)
 #>    juncid numcircs         m0        m1        fc      pvalue       fdr cluster_type
-#>      2        2 0.16117133 0.1321821 0.8201338 0.429049514 0.6532540         A5BS
-#>      4        2 0.07259335 0.0887072 1.2219743 0.357621474 0.6018229         A5BS
-#>     12        2 2.17063192 1.6688186 0.7688169 0.007636536 0.1063564         A5BS
+#>      10        4 21.9836146 22.6839154 0.04524106 0.0376852537 0.10571705         A5BS
+#>      22        4  4.8949842  4.9837574 0.02592965 0.2305026946 0.37802442         A5BS
+#>     29        2  2.2383954  6.2828443 1.48895295 0.0019206582 0.01034051         A5BS
 A3BS_DE = getClusterDE(circ.obj, cluster_type = "A3BS")
 head(A3BS_DE)
 #>    juncid numcircs         m0         m1        fc      pvalue       fdr cluster_type
-#>      10        2 14.5608643 29.5406839 2.0287727 0.008826275 0.1152943         A3BS
-#>      14        2  0.5767828  1.0399432 1.8030068 0.087975056 0.3138943         A3BS
-#>      18        2  0.3669290  0.8523791 2.3230081 0.106600377 0.3371806         A3BS
+#>      4        2  4.6890278  7.5120323  0.67991444 0.003655395 0.01862696         A3BS
+#>      7        2  5.2175355  5.1091103 -0.03029641 0.005408542 0.02467326         A3BS
+#>      8        2  5.4373041  4.6473004 -0.22649862 0.009861141 0.03748799         A3BS
 
 # Get detailed information about specific clusters
-getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(17))
+getClusterAnnotation(circ.obj, cluster_type = "A5BS", juncid = c(10))
   juncid circid  chr     start       end width host_gene cluster_type
-#>     17  15157 chr1  10177516  10195244 17729     UBE4B         A5BS
-#>     17  29014 chr1  10177516  10205097 27582     UBE4B         A5BS
-#>     17  30156 chr1  10177516  10190871 13356     UBE4B         A5BS
-#>     17  34214 chr1  10177516  10197263 19748     UBE4B         A5BS
+#>     10    129 chr1 117944807 117963271  18465    MAN1A2         A5BS
+#>     10   1879 chr1 117944807 117984947  40141    MAN1A2         A5BS
+#>     10   5042 chr1 117944807 118009049  64243    MAN1A2         A5BS
+#>     10   5774 chr1 117944807 117957453  12647    MAN1A2         A5BS
 ```
 
 # Understanding the Results
